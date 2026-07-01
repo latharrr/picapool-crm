@@ -8,7 +8,7 @@
  *
  * Usage: npm run provision:root
  */
-import "dotenv/config";
+import "./load-env";
 import bcrypt from "bcryptjs";
 import { ensureRootSpreadsheet } from "../src/lib/sheets/provisioning";
 import { usersRepository } from "../src/lib/sheets/repositories";

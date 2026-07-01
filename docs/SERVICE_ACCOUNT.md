@@ -44,19 +44,45 @@ converts them back to real newlines before use. Never commit this key.
 
 ## Where the spreadsheets live
 
-Every spreadsheet the app creates (root + one per workspace) is **owned by
-the service account**, not by any human Google account. That means:
+In principle, every spreadsheet the app creates (root + one per workspace)
+is owned by the service account, not by any human Google account — it
+auto-provisions them via `spreadsheets.create` and shares each workspace
+spreadsheet **read-only** with the admin emails you provide, so admins can
+open it for manual audit/export without the app ever expecting a human to
+edit it directly.
 
-- They won't show up in any team member's "My Drive" automatically.
-- The app shares each workspace spreadsheet **read-only** with the admin
-  emails you provide when creating it, so admins can open it for manual
-  audit/export — but the app never expects or needs humans to edit it.
-- If you want an org-wide backup location, you can manually move the
-  service account's spreadsheets into a Shared Drive the service account
-  has access to, or set up domain-wide delegation so the service account
-  creates files as a specific human user instead (out of scope for the
-  default setup — only worth doing if institutional backup policy requires
-  it).
+**In practice, whether the service account can create new files at all
+depends on your account type:**
+
+- **With Google Workspace** (a paid organization domain) and Shared Drive
+  access, or domain-wide delegation impersonating a real user,
+  `spreadsheets.create` works as designed — auto-provisioning is fully
+  hands-off.
+- **With a personal Gmail-based Cloud project** (no Google Workspace), bare
+  service accounts typically have **no Drive storage of their own**. They
+  can *edit* files a human has explicitly shared with them, but calling
+  `spreadsheets.create` fails with `403 PERMISSION_DENIED: The caller does
+  not have permission` — there's nowhere for the new file to live.
+
+### Fallback: attach to a spreadsheet you created
+
+If you hit that 403, the app supports the same workaround for both the
+root spreadsheet and every workspace:
+
+1. Create a blank Google Sheet yourself (in your own Drive).
+2. Share it with your service account's email as **Editor**.
+3. Give the app that spreadsheet's URL or ID instead of asking it to
+   create one:
+   - Root: `npm run provision:root` with `ROOT_SPREADSHEET_ID` already set
+     to your sheet's ID — it adds the missing tabs rather than creating a
+     new file.
+   - Workspaces: paste the URL into the "Existing spreadsheet URL" field
+     in Admin > Workspaces > New Workspace, or pass it as the third
+     argument to `npm run provision:workspace` / second argument to
+     `npm run seed`.
+
+This still keeps 100% of data in Sheets — the only difference is who
+creates the empty file.
 
 ## Quotas
 

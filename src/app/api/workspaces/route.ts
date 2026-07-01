@@ -4,12 +4,17 @@ import { auth } from "@/auth";
 import { requirePermission } from "@/lib/auth/rbac";
 import { workspacesRepository, userWorkspacesRepository } from "@/lib/sheets/repositories";
 import { getRootSpreadsheetId } from "@/lib/env";
-import { provisionWorkspace } from "@/lib/sheets/provisioning";
+import { provisionWorkspace, extractSpreadsheetId } from "@/lib/sheets/provisioning";
 import { errorResponse } from "@/lib/api/errors";
 
 const createWorkspaceSchema = z.object({
   name: z.string().min(1),
   admin_emails: z.array(z.string()).default([]),
+  // Optional: attach to a spreadsheet the user already created and shared
+  // with the service account, instead of letting the app create a new
+  // file (needed when the service account has no Drive storage of its
+  // own — see docs/SERVICE_ACCOUNT.md).
+  existing_spreadsheet: z.string().optional(),
 });
 
 export async function GET() {
@@ -49,10 +54,15 @@ export async function POST(request: Request) {
   }
 
   try {
+    const existingId = parsed.data.existing_spreadsheet
+      ? extractSpreadsheetId(parsed.data.existing_spreadsheet)
+      : undefined;
+
     const result = await provisionWorkspace(
       parsed.data.name,
       parsed.data.admin_emails,
-      session!.user.id
+      session!.user.id,
+      existingId
     );
 
     // Grant the creator immediate access as Admin of the new workspace.

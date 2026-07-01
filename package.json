@@ -12,10 +12,12 @@
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^0.0.72",
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/react-query": "^5.101.2",
     "@tanstack/react-table": "^8.21.3",
     "@upstash/redis": "^1.38.0",
+    "ai": "^3.4.30",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

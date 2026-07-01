@@ -1,12 +1,11 @@
-import { MessageSquare, Mail } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { NoWorkspace } from "@/components/shared/no-workspace";
 import { PermissionDenied } from "@/components/shared/permission-denied";
-import { DataTable } from "@/components/shared/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogMessageDialog } from "@/components/messages/log-message-dialog";
 import { LogEmailDialog } from "@/components/messages/log-email-dialog";
+import { WhatsappMessagesTable, EmailMessagesTable } from "@/components/messages/messages-table";
 import { requireSession } from "@/lib/auth/session";
 import { getActiveWorkspaceContext } from "@/lib/workspace-context";
 import { hasPermission } from "@/lib/auth/rbac";
@@ -15,7 +14,6 @@ import {
   messageHistoryRepository,
   emailHistoryRepository,
 } from "@/lib/sheets/repositories";
-import type { MessageHistoryRecord, EmailHistoryRecord } from "@/lib/sheets/schema/engagement";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +53,8 @@ export default async function MessagesPage() {
   ]);
   const leadOptions = leads.map((l) => ({ id: l.id, name: l.name, phone: l.phone }));
   const leadNameById = new Map(leads.map((l) => [l.id, l.name]));
+  const leadNames = Object.fromEntries(leadNameById.entries());
+  
   const canSendWhatsapp = hasPermission(ctx.role, "SEND_WHATSAPP");
   const canSendEmail = hasPermission(ctx.role, "SEND_EMAIL");
 
@@ -71,36 +71,14 @@ export default async function MessagesPage() {
             <NotConnectedBadge />
             {canSendWhatsapp && <LogMessageDialog workspaceId={ctx.workspaceId} leads={leadOptions} />}
           </div>
-          <DataTable<MessageHistoryRecord>
-            items={messages}
-            emptyIcon={MessageSquare}
-            emptyTitle="No WhatsApp messages logged"
-            emptyDescription="WhatsApp Cloud API isn't connected yet. Messages sent manually can still be logged here for history."
-            columns={[
-              { header: "Lead", render: (m) => leadNameById.get(m.lead_id) ?? m.lead_id },
-              { header: "Direction", render: (m) => <span className="capitalize">{m.direction}</span> },
-              { header: "Message", render: (m) => <span className="line-clamp-1">{m.body}</span> },
-              { header: "Sent", render: (m) => new Date(m.sent_at).toLocaleString() },
-            ]}
-          />
+          <WhatsappMessagesTable messages={messages} leadNames={leadNames} />
         </TabsContent>
         <TabsContent value="email" className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
             <NotConnectedBadge />
             {canSendEmail && <LogEmailDialog workspaceId={ctx.workspaceId} leads={leadOptions} />}
           </div>
-          <DataTable<EmailHistoryRecord>
-            items={emails}
-            emptyIcon={Mail}
-            emptyTitle="No emails logged"
-            emptyDescription="An email provider (e.g. Resend/SendGrid) isn't connected yet. Emails sent manually can still be logged here for history."
-            columns={[
-              { header: "Lead", render: (e) => leadNameById.get(e.lead_id) ?? e.lead_id },
-              { header: "Subject", render: (e) => e.subject },
-              { header: "Direction", render: (e) => <span className="capitalize">{e.direction}</span> },
-              { header: "Sent", render: (e) => new Date(e.sent_at).toLocaleString() },
-            ]}
-          />
+          <EmailMessagesTable emails={emails} leadNames={leadNames} />
         </TabsContent>
       </Tabs>
     </div>

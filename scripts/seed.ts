@@ -4,10 +4,16 @@
  * ROOT_SPREADSHEET_ID and a Founder user to already exist — run
  * `npm run provision:root` (with FOUNDER_EMAIL/PASSWORD set) first.
  *
- * Usage: npm run seed -- "Demo Workspace"
+ * Usage:
+ *   npm run seed -- "Demo Workspace"
+ *   npm run seed -- "Demo Workspace" https://docs.google.com/spreadsheets/d/.../edit
+ *
+ * The second argument is optional: a spreadsheet you've already created
+ * and shared with the service account as Editor, for when
+ * `spreadsheets.create` isn't available to it (see docs/SERVICE_ACCOUNT.md).
  */
-import "dotenv/config";
-import { provisionWorkspace } from "../src/lib/sheets/provisioning";
+import "./load-env";
+import { provisionWorkspace, extractSpreadsheetId } from "../src/lib/sheets/provisioning";
 import {
   usersRepository,
   workspacesRepository,
@@ -76,7 +82,13 @@ async function main() {
     spreadsheetId = existing.spreadsheet_id;
     console.log(`Using existing workspace "${workspaceName}" (${spreadsheetId}).`);
   } else {
-    const result = await provisionWorkspace(workspaceName, [founder.email], "seed-script");
+    const existingSpreadsheetArg = process.argv[3];
+    const result = await provisionWorkspace(
+      workspaceName,
+      [founder.email],
+      "seed-script",
+      existingSpreadsheetArg ? extractSpreadsheetId(existingSpreadsheetArg) : undefined
+    );
     workspaceId = result.workspaceId;
     spreadsheetId = result.spreadsheetId;
     console.log(`Provisioned workspace "${workspaceName}" (${spreadsheetId}).`);

@@ -17,6 +17,7 @@ import {
   Settings,
   Activity,
   History,
+  Sparkles,
 } from "lucide-react";
 
 export type Permission = PermissionName;
@@ -84,6 +85,13 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/notifications",
     label: "Notifications",
     icon: Bell,
+    permission: "VIEW",
+    mobilePrimary: true,
+  },
+  {
+    href: "/assistant",
+    label: "AI Assistant",
+    icon: Sparkles,
     permission: "VIEW",
     mobilePrimary: true,
   },

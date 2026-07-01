@@ -1,15 +1,12 @@
-import { Megaphone } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { NoWorkspace } from "@/components/shared/no-workspace";
 import { PermissionDenied } from "@/components/shared/permission-denied";
-import { DataTable } from "@/components/shared/data-table";
+import { CampaignsTable } from "@/components/campaigns/campaigns-table";
 import { CreateCampaignDialog } from "@/components/campaigns/create-campaign-dialog";
-import { Badge } from "@/components/ui/badge";
 import { requireSession } from "@/lib/auth/session";
 import { getActiveWorkspaceContext } from "@/lib/workspace-context";
 import { hasPermission } from "@/lib/auth/rbac";
 import { campaignsRepository, leadsRepository } from "@/lib/sheets/repositories";
-import type { CampaignRecord } from "@/lib/sheets/schema/engagement";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +42,8 @@ export default async function CampaignsPage() {
     leadCountByCampaign.set(lead.campaign_id, (leadCountByCampaign.get(lead.campaign_id) ?? 0) + 1);
   }
 
+  const leadCounts = Object.fromEntries(leadCountByCampaign.entries());
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -52,23 +51,7 @@ export default async function CampaignsPage() {
         description="Outreach campaigns and their lead-to-conversion performance."
         actions={canEdit ? <CreateCampaignDialog workspaceId={ctx.workspaceId} /> : undefined}
       />
-      <DataTable<CampaignRecord>
-        items={campaigns}
-        emptyIcon={Megaphone}
-        emptyTitle="No campaigns yet"
-        emptyDescription="Create a campaign to start tagging leads and tracking performance by source."
-        searchPlaceholder="Search campaigns..."
-        searchFn={(c, q) => c.name.toLowerCase().includes(q)}
-        columns={[
-          { header: "Name", render: (c) => <span className="font-medium">{c.name}</span> },
-          { header: "Source", render: (c) => c.source || "—" },
-          {
-            header: "Status",
-            render: (c) => <Badge variant="outline" className="capitalize">{c.status}</Badge>,
-          },
-          { header: "Leads", render: (c) => leadCountByCampaign.get(c.id) ?? 0 },
-        ]}
-      />
+      <CampaignsTable campaigns={campaigns} leadCounts={leadCounts} />
     </div>
   );
 }
