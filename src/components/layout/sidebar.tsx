@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ChevronsLeft, ChevronsRight, ChevronDown } from "lucide-react";
-import { NAV_ITEMS, ADMIN_NAV_ITEMS } from "@/lib/nav-config";
+import { NAV_ITEMS, ADMIN_NAV_ITEMS, filterNavItems, type FeatureKey } from "@/lib/nav-config";
 import { cn } from "@/lib/utils";
+import type { Role } from "@/lib/sheets/schema/common";
 
 function NavLink({
   href,
@@ -38,10 +39,19 @@ function NavLink({
   );
 }
 
-export function Sidebar() {
+export function Sidebar({
+  role = null,
+  enabledFeatures = null,
+}: {
+  role?: Role | null;
+  enabledFeatures?: Record<FeatureKey, boolean> | null;
+}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [adminOpen, setAdminOpen] = useState(pathname.startsWith("/admin"));
+
+  const navItems = filterNavItems(NAV_ITEMS, role, enabledFeatures);
+  const adminItems = filterNavItems(ADMIN_NAV_ITEMS, role, enabledFeatures);
 
   return (
     <aside
@@ -62,7 +72,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.href}
             href={item.href}
@@ -73,36 +83,38 @@ export function Sidebar() {
           />
         ))}
 
-        <div className="pt-2">
-          <button
-            onClick={() => setAdminOpen((v) => !v)}
-            className={cn(
-              "flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-accent",
-              collapsed && "justify-center px-2"
-            )}
-          >
-            {!collapsed && <span>Admin</span>}
-            {!collapsed && (
-              <ChevronDown
-                className={cn("h-3.5 w-3.5 transition-transform", adminOpen && "rotate-180")}
-              />
-            )}
-          </button>
-          {(adminOpen || collapsed) && (
-            <div className="mt-1 space-y-1">
-              {ADMIN_NAV_ITEMS.map((item) => (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  label={item.label}
-                  icon={item.icon}
-                  collapsed={collapsed}
-                  active={pathname === item.href || pathname.startsWith(item.href + "/")}
+        {adminItems.length > 0 && (
+          <div className="pt-2">
+            <button
+              onClick={() => setAdminOpen((v) => !v)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-accent",
+                collapsed && "justify-center px-2"
+              )}
+            >
+              {!collapsed && <span>Admin</span>}
+              {!collapsed && (
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 transition-transform", adminOpen && "rotate-180")}
                 />
-              ))}
-            </div>
-          )}
-        </div>
+              )}
+            </button>
+            {(adminOpen || collapsed) && (
+              <div className="mt-1 space-y-1">
+                {adminItems.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    href={item.href}
+                    label={item.label}
+                    icon={item.icon}
+                    collapsed={collapsed}
+                    active={pathname === item.href || pathname.startsWith(item.href + "/")}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </nav>
 
       <div className="border-t border-border p-3">

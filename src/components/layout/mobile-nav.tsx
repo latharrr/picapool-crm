@@ -2,13 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "@/lib/nav-config";
+import { NAV_ITEMS, filterNavItems, type FeatureKey } from "@/lib/nav-config";
 import { cn } from "@/lib/utils";
+import type { Role } from "@/lib/sheets/schema/common";
 
-const items = NAV_ITEMS.filter((item) => item.mobilePrimary).slice(0, 5);
-
-export function MobileNav() {
+export function MobileNav({
+  role = null,
+  enabledFeatures = null,
+}: {
+  role?: Role | null;
+  enabledFeatures?: Record<FeatureKey, boolean> | null;
+}) {
   const pathname = usePathname();
+  const items = filterNavItems(NAV_ITEMS, role, enabledFeatures)
+    .filter((item) => item.mobilePrimary)
+    .slice(0, 5);
 
   return (
     <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">

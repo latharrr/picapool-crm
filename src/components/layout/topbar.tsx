@@ -15,8 +15,9 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
-import { NAV_ITEMS, ADMIN_NAV_ITEMS } from "@/lib/nav-config";
+import { NAV_ITEMS, ADMIN_NAV_ITEMS, filterNavItems, type FeatureKey } from "@/lib/nav-config";
 import { cn } from "@/lib/utils";
+import type { Role } from "@/lib/sheets/schema/common";
 
 export interface WorkspaceOption {
   id: string;
@@ -35,16 +36,22 @@ export function Topbar({
   activeWorkspaceId,
   onSelectWorkspace,
   onSignOut,
+  role = null,
+  enabledFeatures = null,
 }: {
   user: TopbarUser | null;
   workspaces?: WorkspaceOption[];
   activeWorkspaceId?: string;
   onSelectWorkspace?: (id: string) => void | Promise<void>;
   onSignOut?: () => void | Promise<void>;
+  role?: Role | null;
+  enabledFeatures?: Record<FeatureKey, boolean> | null;
 }) {
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0];
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
+  const navItems = filterNavItems(NAV_ITEMS, role, enabledFeatures);
+  const adminItems = filterNavItems(ADMIN_NAV_ITEMS, role, enabledFeatures);
 
   const initials = user?.name
     ? user.name
@@ -68,7 +75,7 @@ export function Topbar({
             <SheetTitle>Picapool CRM</SheetTitle>
           </SheetHeader>
           <nav className="flex flex-col gap-1 overflow-y-auto p-3">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
               return (
@@ -88,10 +95,12 @@ export function Topbar({
                 </Link>
               );
             })}
-            <p className="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Admin
-            </p>
-            {ADMIN_NAV_ITEMS.map((item) => {
+            {adminItems.length > 0 && (
+              <p className="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Admin
+              </p>
+            )}
+            {adminItems.map((item) => {
               const Icon = item.icon;
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
               return (

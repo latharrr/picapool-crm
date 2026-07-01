@@ -1,4 +1,6 @@
 import type { LucideIcon } from "lucide-react";
+import { hasPermission } from "@/lib/auth/rbac";
+import type { Role, PermissionName } from "@/lib/sheets/schema/common";
 import {
   LayoutDashboard,
   Users,
@@ -14,20 +16,10 @@ import {
   Building2,
   Settings,
   Activity,
+  History,
 } from "lucide-react";
 
-export type Permission =
-  | "VIEW"
-  | "EDIT"
-  | "DELETE"
-  | "IMPORT"
-  | "EXPORT"
-  | "CALL"
-  | "SEND_WHATSAPP"
-  | "SEND_EMAIL"
-  | "MANAGE_USERS"
-  | "VIEW_ANALYTICS"
-  | "MANAGE_SETTINGS";
+export type Permission = PermissionName;
 
 export type FeatureKey =
   | "calling"
@@ -107,5 +99,25 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     permission: "MANAGE_SETTINGS",
   },
   { href: "/admin/settings", label: "Settings", icon: Settings, permission: "MANAGE_SETTINGS" },
+  { href: "/admin/activity", label: "Activity Log", icon: History, permission: "MANAGE_SETTINGS" },
   { href: "/admin/system", label: "System Health", icon: Activity, permission: "MANAGE_SETTINGS" },
 ];
+
+/**
+ * Frontend-only visibility filter (UX sugar, not authorization — every page
+ * re-checks permissions server-side). `role` is the user's global role;
+ * `enabledFeatures` is the active workspace's feature-flag map, or null
+ * when there's no active workspace (in which case feature gating is
+ * skipped and only permission-based hiding applies).
+ */
+export function filterNavItems(
+  items: NavItem[],
+  role: Role | null,
+  enabledFeatures: Record<FeatureKey, boolean> | null
+): NavItem[] {
+  return items.filter((item) => {
+    if (item.permission && role && !hasPermission(role, item.permission)) return false;
+    if (item.feature && enabledFeatures && enabledFeatures[item.feature] === false) return false;
+    return true;
+  });
+}
