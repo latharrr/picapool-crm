@@ -1,19 +1,12 @@
-"use client";
+import { getEnvStatus } from "@/lib/env";
+import { LoginForm } from "@/components/auth/login-form";
+import { SetupRequired } from "@/components/shared/setup-required";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    // TODO(milestone-3): wire to NextAuth `signIn("credentials", ...)`.
-    setTimeout(() => setLoading(false), 600);
-  }
+  const env = getEnvStatus();
+  const canAuthenticate = env.googleServiceAccount && env.rootSpreadsheet && env.authSecret;
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background px-4">
@@ -23,29 +16,14 @@ export default function LoginPage() {
             P
           </div>
           <h1 className="text-lg font-semibold text-foreground">Sign in to Picapool CRM</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Internal operations platform
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Internal operations platform</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" placeholder="you@picapool.com" required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
-          </Button>
-        </form>
-
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Authentication isn&apos;t wired up yet — this form is a UI placeholder until the
-          service account and root spreadsheet are configured.
-        </p>
+        {canAuthenticate ? (
+          <LoginForm />
+        ) : (
+          <SetupRequired missing={env.missing} />
+        )}
       </div>
     </div>
   );
