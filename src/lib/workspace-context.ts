@@ -1,14 +1,41 @@
 import type { Session } from "next-auth";
 import type { Role, PermissionName } from "@/lib/sheets/schema/common";
-import { workspacesRepository } from "@/lib/sheets/repositories";
+import { workspacesRepository, userWorkspacesRepository } from "@/lib/sheets/repositories";
 import { getRootSpreadsheetId } from "@/lib/env";
 import { hasPermission, ForbiddenError, UnauthorizedError } from "@/lib/auth/rbac";
 import { getActiveWorkspaceId } from "@/lib/workspace";
+import type { SessionWorkspace } from "@/auth";
 
 export interface WorkspaceContext {
   workspaceId: string;
   spreadsheetId: string;
   role: Role;
+}
+
+/**
+ * Live lookup of a user's workspace memberships (through the same KV cache
+ * as everything else) — called on every request from the `session()`
+ * callback in src/auth.ts instead of trusting a value baked into the JWT at
+ * sign-in. Membership changes (added/removed from a workspace, role
+ * changed) take effect on the user's very next request instead of only
+ * after they log out and back in.
+ */
+export async function getUserWorkspaces(userId: string): Promise<SessionWorkspace[]> {
+  const rootId = getRootSpreadsheetId();
+  if (!rootId) return [];
+
+  const [memberships, workspaces] = await Promise.all([
+    userWorkspacesRepository.list(rootId),
+    workspacesRepository.list(rootId),
+  ]);
+
+  return memberships
+    .filter((m) => m.user_id === userId)
+    .map((m) => ({
+      id: m.workspace_id,
+      name: workspaces.find((w) => w.id === m.workspace_id)?.name ?? "Unknown workspace",
+      role: m.role,
+    }));
 }
 
 export function getWorkspaceRole(session: Session, workspaceId: string): Role | null {

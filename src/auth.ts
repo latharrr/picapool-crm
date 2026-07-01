@@ -2,13 +2,10 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { authConfig } from "@/lib/auth/auth.config";
-import {
-  usersRepository,
-  userWorkspacesRepository,
-  workspacesRepository,
-} from "@/lib/sheets/repositories";
+import { usersRepository } from "@/lib/sheets/repositories";
 import { getRootSpreadsheetId } from "@/lib/env";
 import { SheetsNotConfiguredError } from "@/lib/sheets/errors";
+import { getUserWorkspaces } from "@/lib/workspace-context";
 import type { Role } from "@/lib/sheets/schema/common";
 
 export interface SessionWorkspace {
@@ -31,7 +28,6 @@ declare module "next-auth" {
   interface User {
     id: string;
     role: Role;
-    workspaces: SessionWorkspace[];
   }
 }
 
@@ -39,7 +35,6 @@ declare module "@auth/core/jwt" {
   interface JWT {
     uid: string;
     role: Role;
-    workspaces: SessionWorkspace[];
   }
 }
 
@@ -59,25 +54,11 @@ async function authorize(credentials: Partial<Record<"email" | "password", unkno
     const passwordValid = await bcrypt.compare(password, user.password_hash);
     if (!passwordValid) return null;
 
-    const [memberships, workspaces] = await Promise.all([
-      userWorkspacesRepository.list(rootId),
-      workspacesRepository.list(rootId),
-    ]);
-
-    const sessionWorkspaces: SessionWorkspace[] = memberships
-      .filter((m) => m.user_id === user.id)
-      .map((m) => ({
-        id: m.workspace_id,
-        name: workspaces.find((w) => w.id === m.workspace_id)?.name ?? "Unknown workspace",
-        role: m.role,
-      }));
-
     return {
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.default_role,
-      workspaces: sessionWorkspaces,
     };
   } catch (err) {
     if (err instanceof SheetsNotConfiguredError) return null;
@@ -99,14 +80,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.uid = user.id;
         token.role = user.role;
-        token.workspaces = user.workspaces;
       }
       return token;
     },
-    session({ session, token }) {
+    // Workspace membership is looked up live here (through the KV cache)
+    // rather than baked into the JWT at sign-in, so adding/removing someone
+    // from a workspace takes effect on their next request, not only after
+    // they log out and back in.
+    async session({ session, token }) {
       session.user.id = token.uid;
       session.user.role = token.role;
-      session.user.workspaces = token.workspaces;
+      session.user.workspaces = await getUserWorkspaces(token.uid);
       return session;
     },
   },
