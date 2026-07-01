@@ -12,6 +12,7 @@ export interface SystemHealth {
   rootSpreadsheet: boolean;
   authSecret: boolean;
   kv: KVHealth;
+  lastCronRefresh: string | null;
 }
 
 async function checkKVReachable(): Promise<boolean> {
@@ -30,11 +31,13 @@ async function checkKVReachable(): Promise<boolean> {
 export async function getSystemHealth(): Promise<SystemHealth> {
   const env = getEnvStatus();
   const reachable = await checkKVReachable();
+  const lastCronRefresh = await getKV().get<string>("cron:last-refresh");
 
   return {
     googleServiceAccount: env.googleServiceAccount,
     rootSpreadsheet: env.rootSpreadsheet,
     authSecret: env.authSecret,
     kv: { configured: hasKVConfig(), reachable },
+    lastCronRefresh,
   };
 }

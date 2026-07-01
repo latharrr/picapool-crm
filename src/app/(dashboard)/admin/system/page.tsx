@@ -63,6 +63,23 @@ export default async function AdminSystemPage() {
           />
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">Background jobs</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <StatusRow
+            label="Cache refresh cron"
+            detail={
+              health.lastCronRefresh
+                ? `Last ran ${new Date(health.lastCronRefresh).toLocaleString()}`
+                : "Hasn't run yet — configured in vercel.json, runs every 5 minutes once deployed"
+            }
+            level={health.lastCronRefresh ? "ok" : "warn"}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
