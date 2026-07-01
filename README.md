@@ -39,7 +39,8 @@ KV, NextAuth secret).
 
 - `src/app/` — routes: `login`, `(dashboard)/*` (all modules + `admin/*`), `api/*`.
 - `src/lib/sheets/` — the only code allowed to call `googleapis`. Repository
-  pattern: `BaseRepository<T>` + one thin subclass per tab.
+  pattern: one generic `BaseRepository<T>` instantiated per tab with that
+  tab's Zod schema + column codec (`schema/*.ts`, `repositories/*.ts`).
 - `src/lib/kv/` — cache-aside reads and lead-locking, backed by Upstash Redis
   with an in-memory fallback for local dev.
 - `src/lib/auth/` — NextAuth config + the RBAC permission matrix.
