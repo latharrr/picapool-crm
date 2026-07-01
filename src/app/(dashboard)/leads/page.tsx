@@ -1,38 +1,60 @@
-import { Users, Plus, Upload, Download } from "lucide-react";
+import { Users } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Button } from "@/components/ui/button";
+import { NoWorkspace } from "@/components/shared/no-workspace";
+import { PermissionDenied } from "@/components/shared/permission-denied";
+import { CreateLeadDialog } from "@/components/leads/create-lead-dialog";
+import { LeadsTable } from "@/components/leads/leads-table";
+import { requireSession } from "@/lib/auth/session";
+import { getActiveWorkspaceContext } from "@/lib/workspace-context";
+import { hasPermission } from "@/lib/auth/rbac";
+import { leadsRepository } from "@/lib/sheets/repositories";
 
-export default function LeadsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function LeadsPage() {
+  const session = await requireSession();
+  const ctx = await getActiveWorkspaceContext(session);
+
+  if (!ctx) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Leads" />
+        <NoWorkspace />
+      </div>
+    );
+  }
+
+  if (!hasPermission(ctx.role, "VIEW")) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Leads" />
+        <PermissionDenied />
+      </div>
+    );
+  }
+
+  const leads = await leadsRepository.list(ctx.spreadsheetId);
+  const canEdit = hasPermission(ctx.role, "EDIT");
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Leads"
         description="Every lead across sources, colleges, and campaigns in this workspace."
-        actions={
-          <>
-            <Button variant="outline" size="sm">
-              <Upload className="mr-1.5 h-4 w-4" /> Import
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="mr-1.5 h-4 w-4" /> Export
-            </Button>
-            <Button size="sm">
-              <Plus className="mr-1.5 h-4 w-4" /> New Lead
-            </Button>
-          </>
-        }
+        actions={canEdit ? <CreateLeadDialog workspaceId={ctx.workspaceId} /> : undefined}
       />
-      <EmptyState
-        icon={Users}
-        title="No leads yet"
-        description="Import a CSV or add your first lead to start building your pipeline."
-        action={
-          <Button size="sm">
-            <Plus className="mr-1.5 h-4 w-4" /> New Lead
-          </Button>
-        }
-      />
+
+      {leads.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No leads yet"
+          description="Add your first lead to start building your pipeline."
+          action={canEdit ? <CreateLeadDialog workspaceId={ctx.workspaceId} /> : undefined}
+        />
+      ) : (
+        <LeadsTable leads={leads} />
+      )}
     </div>
   );
 }

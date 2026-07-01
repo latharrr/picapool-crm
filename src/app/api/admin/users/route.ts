@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
-import { requirePermission, ForbiddenError, UnauthorizedError } from "@/lib/auth/rbac";
+import { requirePermission } from "@/lib/auth/rbac";
 import { usersRepository } from "@/lib/sheets/repositories";
 import { getRootSpreadsheetId } from "@/lib/env";
-import { SheetsNotConfiguredError } from "@/lib/sheets/errors";
 import { roleEnum } from "@/lib/sheets/schema/common";
+import { errorResponse } from "@/lib/api/errors";
 
 const createUserSchema = z.object({
   name: z.string().min(1),
@@ -85,18 +85,4 @@ export async function POST(request: Request) {
   } catch (err) {
     return errorResponse(err);
   }
-}
-
-function errorResponse(err: unknown) {
-  if (err instanceof UnauthorizedError) {
-    return NextResponse.json({ error: err.message }, { status: 401 });
-  }
-  if (err instanceof ForbiddenError) {
-    return NextResponse.json({ error: err.message }, { status: 403 });
-  }
-  if (err instanceof SheetsNotConfiguredError) {
-    return NextResponse.json({ error: err.message }, { status: 503 });
-  }
-  console.error(err);
-  return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
 }

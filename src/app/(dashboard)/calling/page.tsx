@@ -1,21 +1,42 @@
-import { Phone } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
-import { EmptyState } from "@/components/shared/empty-state";
-import { Button } from "@/components/ui/button";
+import { NoWorkspace } from "@/components/shared/no-workspace";
+import { PermissionDenied } from "@/components/shared/permission-denied";
+import { CallConsole } from "@/components/calling/call-console";
+import { requireSession } from "@/lib/auth/session";
+import { getActiveWorkspaceContext } from "@/lib/workspace-context";
+import { hasPermission } from "@/lib/auth/rbac";
 
-export default function CallingPage() {
+export const dynamic = "force-dynamic";
+
+export default async function CallingPage() {
+  const session = await requireSession();
+  const ctx = await getActiveWorkspaceContext(session);
+
+  if (!ctx) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Calling" />
+        <NoWorkspace />
+      </div>
+    );
+  }
+
+  if (!hasPermission(ctx.role, "CALL")) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Calling" />
+        <PermissionDenied />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Calling"
         description="Work through your queue one lead at a time with keyboard shortcuts."
       />
-      <EmptyState
-        icon={Phone}
-        title="No leads in the queue"
-        description="Start calling to have the server lock and hand you the next unassigned lead."
-        action={<Button size="sm">Start Calling</Button>}
-      />
+      <CallConsole workspaceId={ctx.workspaceId} />
     </div>
   );
 }
