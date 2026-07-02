@@ -101,7 +101,12 @@ export default async function LeadsPage() {
           action={canEdit ? <CreateLeadDialog workspaceId={ctx.workspaceId} /> : undefined}
         />
       ) : (
-        <LeadsTable leads={leads} memberNames={memberNames} />
+        <LeadsTable
+          leads={leads}
+          memberNames={memberNames}
+          workspaceId={ctx.workspaceId}
+          canManageAssignments={canAssign}
+        />
       )}
     </div>
   );

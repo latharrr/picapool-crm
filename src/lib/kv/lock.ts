@@ -6,13 +6,28 @@ function lockKey(workspaceId: string, leadId: string): string {
   return `lock:${workspaceId}:lead:${leadId}`;
 }
 
-/** Attempts to lock a lead for a caller. Returns true if the lock was acquired. */
+/**
+ * Attempts to lock a lead for a caller. Returns true if the lock was
+ * acquired. If the lead is already locked to this same user (e.g. their
+ * browser closed mid-call before the release fetch fired, and they come
+ * back before the 10-minute TTL expires), this refreshes the TTL and
+ * succeeds instead of failing — otherwise `setNX` alone would treat their
+ * own stale lock as unavailable and skip the lead entirely.
+ */
 export async function acquireLeadLock(
   workspaceId: string,
   leadId: string,
   userId: string
 ): Promise<boolean> {
-  return getKV().setNX(lockKey(workspaceId, leadId), userId, LOCK_TTL_MS);
+  const kv = getKV();
+  const key = lockKey(workspaceId, leadId);
+  const acquired = await kv.setNX(key, userId, LOCK_TTL_MS);
+  if (acquired) return true;
+
+  const owner = await kv.get<string>(key);
+  if (owner !== userId) return false;
+  await kv.set(key, userId, { ttlMs: LOCK_TTL_MS });
+  return true;
 }
 
 export async function isLeadLocked(workspaceId: string, leadId: string): Promise<boolean> {
