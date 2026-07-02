@@ -1,6 +1,6 @@
 import { getSheetsClient, columnLetter } from "./client";
 import { withRetry } from "./rateLimiter";
-import { getCachedTab, invalidateTab, markTabRefreshed } from "@/lib/kv/cache";
+import { getCachedTab, invalidateTab, invalidateDashboardStats, markTabRefreshed } from "@/lib/kv/cache";
 import { RecordNotFoundError } from "./errors";
 import type { BaseRecord, TabDefinition } from "./tab";
 
@@ -86,7 +86,7 @@ export class BaseRepository<T extends BaseRecord> {
         requestBody: { values: [this.recordToRow(record)] },
       })
     );
-    await invalidateTab(spreadsheetId, this.tab.name);
+    await Promise.all([invalidateTab(spreadsheetId, this.tab.name), invalidateDashboardStats(spreadsheetId)]);
     return record;
   }
 
@@ -114,7 +114,7 @@ export class BaseRepository<T extends BaseRecord> {
         requestBody: { values: records.map((r) => this.recordToRow(r)) },
       })
     );
-    await invalidateTab(spreadsheetId, this.tab.name);
+    await Promise.all([invalidateTab(spreadsheetId, this.tab.name), invalidateDashboardStats(spreadsheetId)]);
     return records;
   }
 
@@ -159,7 +159,7 @@ export class BaseRepository<T extends BaseRecord> {
         requestBody: { values: [this.recordToRow(updated)] },
       })
     );
-    await invalidateTab(spreadsheetId, this.tab.name);
+    await Promise.all([invalidateTab(spreadsheetId, this.tab.name), invalidateDashboardStats(spreadsheetId)]);
     return updated;
   }
 

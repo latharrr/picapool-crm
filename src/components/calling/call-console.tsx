@@ -3,11 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/leads/status-badge";
 import { TimelineList } from "@/components/leads/timeline-list";
 import { EmptyState } from "@/components/shared/empty-state";
-import { OutcomeButtons, OUTCOMES } from "./outcome-buttons";
+import { OutcomeButtons, OUTCOMES, PG_OUTCOMES } from "./outcome-buttons";
+import { PhoneTapAction } from "./phone-tap-action";
+import { ChipSelect, type ChipOption } from "./chip-select";
 import { useNextLead, useSaveAndNext, releaseLead } from "@/hooks/useCalling";
 import type { LeadRecord } from "@/lib/sheets/schema/crm";
 import type { TimelineEntry } from "@/lib/leads/timeline";
@@ -16,11 +20,39 @@ import { toast } from "sonner";
 
 type Phase = "idle" | "active" | "empty";
 
+const GENDER_OPTIONS: ChipOption<NonNullable<LeadRecord["gender"]>>[] = [
+  { value: "Male", label: "Male" },
+  { value: "Female", label: "Female" },
+  { value: "Unisex", label: "Unisex" },
+];
+const STAGE_OPTIONS: ChipOption<NonNullable<LeadRecord["pg_stage"]>>[] = [
+  { value: "Lead", label: "Lead" },
+  { value: "Site Visit", label: "Site Visit" },
+  { value: "Negotiation", label: "Negotiation" },
+  { value: "Closed", label: "Closed" },
+];
+const FOLLOW_UP_OPTIONS: ChipOption<NonNullable<LeadRecord["follow_up_status"]>>[] = [
+  { value: "Yes", label: "Yes" },
+  { value: "No", label: "No" },
+  { value: "Done", label: "Done" },
+];
+const PRIORITY_OPTIONS: ChipOption<LeadRecord["priority"]>[] = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
 export function CallConsole({ workspaceId }: { workspaceId: string }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [lead, setLead] = useState<LeadRecord | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [notes, setNotes] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [beds, setBeds] = useState("");
+  const [gender, setGender] = useState<LeadRecord["gender"]>();
+  const [stage, setStage] = useState<LeadRecord["pg_stage"]>();
+  const [followUp, setFollowUp] = useState<LeadRecord["follow_up_status"]>();
+  const [priority, setPriority] = useState<LeadRecord["priority"]>("medium");
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const leadRef = useRef<LeadRecord | null>(null);
   useEffect(() => {
@@ -29,6 +61,17 @@ export function CallConsole({ workspaceId }: { workspaceId: string }) {
 
   const nextMutation = useNextLead(workspaceId);
   const saveMutation = useSaveAndNext(workspaceId);
+  const isPg = lead?.lead_type === "pg";
+
+  function resetFieldsFor(next: LeadRecord) {
+    setNotes("");
+    setOwnerName(next.owner_name ?? "");
+    setBeds(next.beds != null ? String(next.beds) : "");
+    setGender(next.gender);
+    setStage(next.pg_stage);
+    setFollowUp(next.follow_up_status);
+    setPriority(next.priority ?? "medium");
+  }
 
   async function startOrSkip() {
     const result = await nextMutation.mutateAsync();
@@ -39,14 +82,28 @@ export function CallConsole({ workspaceId }: { workspaceId: string }) {
     }
     setLead(result.lead);
     setTimeline(result.timeline ?? []);
-    setNotes("");
+    resetFieldsFor(result.lead);
     setPhase("active");
   }
 
   async function handleOutcome(outcome: CallOutcome) {
     if (!lead) return;
     try {
-      const result = await saveMutation.mutateAsync({ leadId: lead.id, outcome, notes });
+      const result = await saveMutation.mutateAsync({
+        leadId: lead.id,
+        outcome,
+        notes,
+        ...(isPg
+          ? {
+              ownerName: ownerName || undefined,
+              beds: beds !== "" ? Number(beds) : undefined,
+              gender,
+              pgStage: stage,
+              followUp,
+              priority,
+            }
+          : {}),
+      });
       toast.success(`Logged: ${outcome.replace(/_/g, " ")}`);
       if (!result.next) {
         setPhase("empty");
@@ -55,7 +112,7 @@ export function CallConsole({ workspaceId }: { workspaceId: string }) {
       }
       setLead(result.next);
       setTimeline(result.nextTimeline);
-      setNotes("");
+      resetFieldsFor(result.next);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save call");
     }
@@ -80,7 +137,7 @@ export function CallConsole({ workspaceId }: { workspaceId: string }) {
       const target = e.target as HTMLElement | null;
       const isTyping = target?.tagName === "TEXTAREA" || target?.tagName === "INPUT";
       if (isTyping) return;
-      const match = OUTCOMES.find((o) => o.key === e.key);
+      const match = (isPg ? PG_OUTCOMES : OUTCOMES).find((o) => o.key === e.key);
       if (match) {
         e.preventDefault();
         handleOutcome(match.outcome);
@@ -89,7 +146,7 @@ export function CallConsole({ workspaceId }: { workspaceId: string }) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, lead, notes]);
+  }, [phase, lead, notes, ownerName, beds, gender, stage, followUp, priority]);
 
   if (phase === "idle") {
     return (
@@ -130,17 +187,71 @@ export function CallConsole({ workspaceId }: { workspaceId: string }) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{lead.name}</h2>
-              <p className="text-sm text-muted-foreground">{lead.phone}</p>
+              {isPg ? (
+                <PhoneTapAction phone={lead.phone} />
+              ) : (
+                <p className="text-sm text-muted-foreground">{lead.phone}</p>
+              )}
             </div>
             <StatusBadge status={lead.status} />
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <DetailRow label="College" value={lead.college} />
-            <DetailRow label="City" value={lead.city} />
-            <DetailRow label="Year" value={lead.year} />
-            <DetailRow label="Source" value={lead.source} />
+            {isPg ? (
+              <>
+                <DetailRow label="Source" value={lead.source} />
+                <DetailRow label="Location" value={lead.city} />
+              </>
+            ) : (
+              <>
+                <DetailRow label="College" value={lead.college} />
+                <DetailRow label="City" value={lead.city} />
+                <DetailRow label="Year" value={lead.year} />
+                <DetailRow label="Source" value={lead.source} />
+              </>
+            )}
           </dl>
+
+          {isPg && (
+            <div className="mt-4 space-y-4 border-t border-border pt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="owner-name">Owner name</Label>
+                  <Input
+                    id="owner-name"
+                    value={ownerName}
+                    onChange={(e) => setOwnerName(e.target.value)}
+                    placeholder="Add owner name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="beds">Beds</Label>
+                  <Input
+                    id="beds"
+                    type="number"
+                    min={0}
+                    value={beds}
+                    onChange={(e) => setBeds(e.target.value)}
+                    placeholder="Add beds"
+                  />
+                </div>
+              </div>
+              <ChipSelect label="Gender" options={GENDER_OPTIONS} value={gender} onChange={setGender} />
+            </div>
+          )}
         </div>
+
+        {isPg && (
+          <div className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-3">
+            <ChipSelect label="Stage" options={STAGE_OPTIONS} value={stage} onChange={setStage} />
+            <ChipSelect label="Priority" options={PRIORITY_OPTIONS} value={priority} onChange={setPriority} />
+            <ChipSelect
+              label="Follow Up Call"
+              options={FOLLOW_UP_OPTIONS}
+              value={followUp}
+              onChange={setFollowUp}
+            />
+          </div>
+        )}
 
         <div className="rounded-xl border border-border bg-card p-5">
           <label htmlFor="call-notes" className="text-sm font-medium text-foreground">
@@ -159,9 +270,16 @@ export function CallConsole({ workspaceId }: { workspaceId: string }) {
 
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="mb-3 text-sm font-medium text-foreground">
-            Outcome <span className="font-normal text-muted-foreground">(or press 1–7)</span>
+            {isPg ? "Call Status" : "Outcome"}{" "}
+            <span className="font-normal text-muted-foreground">
+              (or press 1–{isPg ? PG_OUTCOMES.length : OUTCOMES.length})
+            </span>
           </p>
-          <OutcomeButtons onSelect={handleOutcome} disabled={saveMutation.isPending} />
+          <OutcomeButtons
+            outcomes={isPg ? PG_OUTCOMES : OUTCOMES}
+            onSelect={handleOutcome}
+            disabled={saveMutation.isPending}
+          />
         </div>
 
         <Button

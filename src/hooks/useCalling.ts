@@ -3,6 +3,18 @@ import type { LeadRecord } from "@/lib/sheets/schema/crm";
 import type { CallOutcome } from "@/lib/sheets/schema/engagement";
 import type { TimelineEntry } from "@/lib/leads/timeline";
 
+interface SaveNextInput {
+  leadId: string;
+  outcome: CallOutcome;
+  notes?: string;
+  ownerName?: string;
+  beds?: number;
+  gender?: LeadRecord["gender"];
+  pgStage?: LeadRecord["pg_stage"];
+  followUp?: LeadRecord["follow_up_status"];
+  priority?: LeadRecord["priority"];
+}
+
 interface NextResponse {
   lead: LeadRecord | null;
   timeline?: TimelineEntry[];
@@ -35,19 +47,10 @@ export function useNextLead(workspaceId: string) {
 
 export function useSaveAndNext(workspaceId: string) {
   return useMutation({
-    mutationFn: ({
-      leadId,
-      outcome,
-      notes,
-    }: {
-      leadId: string;
-      outcome: CallOutcome;
-      notes?: string;
-    }) =>
+    mutationFn: ({ leadId, ...body }: SaveNextInput) =>
       postJSON<SaveNextResponse>(`/api/calling/${leadId}/save-next`, {
         workspaceId,
-        outcome,
-        notes,
+        ...body,
       }),
   });
 }

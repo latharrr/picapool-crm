@@ -14,6 +14,8 @@ const STATUS_STYLES: Record<LeadStatus, string> = {
   spam: "bg-danger/10 text-danger border-danger/20",
   converted: "bg-success/10 text-success border-success/20",
   closed: "bg-muted text-muted-foreground border-border",
+  pitched: "bg-secondary text-foreground border-border",
+  not_interested: "bg-danger/10 text-danger border-danger/20",
 };
 
 export function StatusBadge({ status }: { status: LeadStatus }) {

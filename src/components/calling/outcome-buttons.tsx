@@ -19,6 +19,14 @@ export const OUTCOMES: OutcomeConfig[] = [
   { outcome: "no_answer", label: "No Answer", key: "7", tone: "warning" },
 ];
 
+/** Call Status options for PG-listing leads (see the PG Demand & Supply workspace). */
+export const PG_OUTCOMES: OutcomeConfig[] = [
+  { outcome: "pitched", label: "Pitched", key: "1", tone: "success" },
+  { outcome: "no_answer", label: "Not Answered", key: "2", tone: "warning" },
+  { outcome: "callback", label: "Callback", key: "3", tone: "warning" },
+  { outcome: "not_interested", label: "Not Interested", key: "4", tone: "danger" },
+];
+
 const TONE_CLASSES: Record<OutcomeConfig["tone"], string> = {
   success: "border-success/30 text-success hover:bg-success/10",
   warning: "border-warning/30 text-warning hover:bg-warning/10",
@@ -28,13 +36,15 @@ const TONE_CLASSES: Record<OutcomeConfig["tone"], string> = {
 export function OutcomeButtons({
   onSelect,
   disabled,
+  outcomes = OUTCOMES,
 }: {
   onSelect: (outcome: CallOutcome) => void;
   disabled?: boolean;
+  outcomes?: OutcomeConfig[];
 }) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {OUTCOMES.map((o) => (
+      {outcomes.map((o) => (
         <Button
           key={o.outcome}
           type="button"

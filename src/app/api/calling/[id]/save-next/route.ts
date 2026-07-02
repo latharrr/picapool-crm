@@ -7,6 +7,7 @@ import { getLeadLockOwner, releaseLeadLock } from "@/lib/kv/lock";
 import { getLeadTimeline } from "@/lib/leads/timeline";
 import { leadsRepository, callHistoryRepository, activityLogRepository } from "@/lib/sheets/repositories";
 import { callOutcomeEnum } from "@/lib/sheets/schema/engagement";
+import { leadGenderEnum, pgStageEnum, followUpStatusEnum, leadPriorityEnum } from "@/lib/sheets/schema/crm";
 import { errorResponse } from "@/lib/api/errors";
 
 const bodySchema = z.object({
@@ -14,6 +15,12 @@ const bodySchema = z.object({
   outcome: callOutcomeEnum,
   notes: z.string().optional(),
   durationSeconds: z.number().optional(),
+  ownerName: z.string().optional(),
+  beds: z.number().optional(),
+  gender: leadGenderEnum.optional(),
+  pgStage: pgStageEnum.optional(),
+  followUp: followUpStatusEnum.optional(),
+  priority: leadPriorityEnum.optional(),
 });
 
 export async function POST(request: Request, ctxParam: RouteContext<"/api/calling/[id]/save-next">) {
@@ -55,6 +62,12 @@ export async function POST(request: Request, ctxParam: RouteContext<"/api/callin
         status: outcomeToStatus(parsed.data.outcome),
         owner_id: userId,
         ...(parsed.data.notes ? { notes: parsed.data.notes } : {}),
+        ...(parsed.data.ownerName ? { owner_name: parsed.data.ownerName } : {}),
+        ...(parsed.data.beds !== undefined ? { beds: parsed.data.beds } : {}),
+        ...(parsed.data.gender ? { gender: parsed.data.gender } : {}),
+        ...(parsed.data.pgStage ? { pg_stage: parsed.data.pgStage } : {}),
+        ...(parsed.data.followUp ? { follow_up_status: parsed.data.followUp } : {}),
+        ...(parsed.data.priority ? { priority: parsed.data.priority } : {}),
       },
       userId
     );

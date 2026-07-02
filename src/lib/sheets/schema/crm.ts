@@ -15,10 +15,19 @@ export const leadStatusEnum = z.enum([
   "no_answer",
   "converted",
   "closed",
+  "pitched",
+  "not_interested",
 ]);
 export type LeadStatus = z.infer<typeof leadStatusEnum>;
 
 export const leadPriorityEnum = z.enum(["low", "medium", "high"]);
+
+/** PG-listing-specific fields (see PG_Demand_and_Supply workspace) — appended
+ * after baseColumns in leadsTab.columns below so already-provisioned
+ * workspaces' existing column positions never shift. */
+export const leadGenderEnum = z.enum(["Male", "Female", "Unisex"]);
+export const pgStageEnum = z.enum(["Lead", "Site Visit", "Negotiation", "Closed"]);
+export const followUpStatusEnum = z.enum(["Yes", "No", "Done"]);
 
 export interface LeadRecord extends BaseRecord {
   name: string;
@@ -35,6 +44,15 @@ export interface LeadRecord extends BaseRecord {
   owner_id?: string;
   notes?: string;
   tags: string[];
+  owner_name?: string;
+  gender?: z.infer<typeof leadGenderEnum>;
+  beds?: number;
+  pg_stage?: z.infer<typeof pgStageEnum>;
+  follow_up_status?: z.infer<typeof followUpStatusEnum>;
+  /** Free string (not a strict enum) so future categories like
+   * "group_buying" don't require another schema migration. "pg" for
+   * PG-listing leads; undefined for ordinary student leads. */
+  lead_type?: string;
 }
 
 export const leadSchema = z.object({
@@ -53,6 +71,12 @@ export const leadSchema = z.object({
   owner_id: z.string().optional(),
   notes: z.string().optional(),
   tags: z.array(z.string()),
+  owner_name: z.string().optional(),
+  gender: leadGenderEnum.optional(),
+  beds: z.number().optional(),
+  pg_stage: pgStageEnum.optional(),
+  follow_up_status: followUpStatusEnum.optional(),
+  lead_type: z.string().optional(),
 });
 
 export const leadsTab = defineTab<LeadRecord>({
@@ -75,6 +99,12 @@ export const leadsTab = defineTab<LeadRecord>({
     codec.optionalString<LeadRecord>("notes")(),
     codec.stringArray<LeadRecord>("tags")(),
     ...baseColumns<LeadRecord>(),
+    codec.optionalString<LeadRecord>("owner_name")(),
+    codec.optionalString<LeadRecord>("gender")(),
+    codec.number<LeadRecord>("beds")(),
+    codec.optionalString<LeadRecord>("pg_stage")(),
+    codec.optionalString<LeadRecord>("follow_up_status")(),
+    codec.optionalString<LeadRecord>("lead_type")(),
   ],
 });
 

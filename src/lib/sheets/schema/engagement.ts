@@ -11,6 +11,8 @@ export const callOutcomeEnum = z.enum([
   "wrong_number",
   "spam",
   "no_answer",
+  "pitched",
+  "not_interested",
 ]);
 export type CallOutcome = z.infer<typeof callOutcomeEnum>;
 

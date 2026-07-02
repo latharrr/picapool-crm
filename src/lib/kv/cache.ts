@@ -33,6 +33,18 @@ export async function invalidateTab(spreadsheetId: string, tabName: string): Pro
   await getKV().del(cacheKey(spreadsheetId, tabName));
 }
 
+/**
+ * Dashboard stats are aggregated across several tabs and cached separately
+ * from the per-tab cache above (see src/lib/analytics/cache.ts) — busting
+ * this on every write keeps that cache-aside blob from going stale between
+ * the once-daily cron refresh. Lives here rather than in analytics/cache.ts
+ * to avoid that module's import of the repositories (which import this
+ * file) becoming circular.
+ */
+export async function invalidateDashboardStats(spreadsheetId: string): Promise<void> {
+  await getKV().del(`dashboard:${spreadsheetId}`);
+}
+
 const LAST_REFRESH_KEY_PREFIX = "sheet:last-refresh:";
 
 export async function markTabRefreshed(spreadsheetId: string, tabName: string): Promise<void> {

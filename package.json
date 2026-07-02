@@ -12,6 +12,7 @@
     "seed": "tsx scripts/seed.ts",
     "feed:taxonomy": "tsx scripts/feed-taxonomy.ts",
     "import:research": "tsx scripts/import-research-data.ts",
+    "import:pg-supply": "tsx scripts/import-pg-supply.ts",
     "tabs:sync": "tsx scripts/ensure-tabs.ts"
   },
   "dependencies": {
