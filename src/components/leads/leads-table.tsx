@@ -5,13 +5,24 @@ import { useRouter } from "next/navigation";
 import { Search, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "./status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { LeadRecord } from "@/lib/sheets/schema/crm";
 
-export function LeadsTable({ leads }: { leads: LeadRecord[] }) {
+export function LeadsTable({
+  leads,
+  memberNames = {},
+}: {
+  leads: LeadRecord[];
+  memberNames?: Record<string, string>;
+}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+
+  function assigneeName(lead: LeadRecord): string | null {
+    return lead.owner_id ? (memberNames[lead.owner_id] ?? "Unknown user") : null;
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -50,6 +61,7 @@ export function LeadsTable({ leads }: { leads: LeadRecord[] }) {
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Source</TableHead>
+                  <TableHead>Assigned to</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -69,6 +81,13 @@ export function LeadsTable({ leads }: { leads: LeadRecord[] }) {
                     </TableCell>
                     <TableCell className="capitalize text-muted-foreground">{lead.priority}</TableCell>
                     <TableCell className="text-muted-foreground">{lead.source || "—"}</TableCell>
+                    <TableCell>
+                      {assigneeName(lead) ? (
+                        <Badge variant="outline">{assigneeName(lead)}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">Unassigned</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -92,6 +111,9 @@ export function LeadsTable({ leads }: { leads: LeadRecord[] }) {
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {[lead.college, lead.city].filter(Boolean).join(" · ") || "No college/city on file"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {assigneeName(lead) ? `Assigned to ${assigneeName(lead)}` : "Unassigned"}
                 </p>
               </button>
             ))}

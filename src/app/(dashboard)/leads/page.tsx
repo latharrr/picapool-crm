@@ -46,19 +46,24 @@ export default async function LeadsPage() {
   const canAssign = hasPermission(ctx.role, "VIEW_ANALYTICS");
 
   let assignableMembers: AssignableMember[] = [];
-  if (canAssign) {
-    const rootId = getRootSpreadsheetId();
-    if (rootId) {
-      const [memberships, users] = await Promise.all([
-        userWorkspacesRepository.list(rootId),
-        usersRepository.list(rootId),
-      ]);
-      const userMap = new Map(users.map((u) => [u.id, u]));
-      assignableMembers = memberships
-        .filter((m) => m.workspace_id === ctx.workspaceId && hasPermission(m.role, "CALL"))
+  const memberNames: Record<string, string> = {};
+  const rootId = getRootSpreadsheetId();
+  if (rootId) {
+    const [memberships, users] = await Promise.all([
+      userWorkspacesRepository.list(rootId),
+      usersRepository.list(rootId),
+    ]);
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    const workspaceMembers = memberships.filter((m) => m.workspace_id === ctx.workspaceId);
+    for (const m of workspaceMembers) {
+      memberNames[m.user_id] = userMap.get(m.user_id)?.name ?? "Unknown user";
+    }
+    if (canAssign) {
+      assignableMembers = workspaceMembers
+        .filter((m) => hasPermission(m.role, "CALL"))
         .map((m) => ({
           userId: m.user_id,
-          name: userMap.get(m.user_id)?.name ?? "Unknown user",
+          name: memberNames[m.user_id],
           role: m.role,
         }));
     }
@@ -96,7 +101,7 @@ export default async function LeadsPage() {
           action={canEdit ? <CreateLeadDialog workspaceId={ctx.workspaceId} /> : undefined}
         />
       ) : (
-        <LeadsTable leads={leads} />
+        <LeadsTable leads={leads} memberNames={memberNames} />
       )}
     </div>
   );
