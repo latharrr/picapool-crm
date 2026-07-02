@@ -35,7 +35,49 @@ async function createSpreadsheetWithTabs(title: string, tabs: TabDefinition<any>
     })
   );
 
+  await applyTabVisibility(spreadsheetId, tabs);
+
   return spreadsheetId;
+}
+
+/**
+ * Hides any tab flagged `hidden: true` (internal/system tabs like Activity_Log
+ * or Settings) so opening the spreadsheet directly in Google Sheets only
+ * surfaces the tabs a human actually works with. No-op for tabs already in
+ * the right state, so it's safe to call on every provision/sync.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function applyTabVisibility(spreadsheetId: string, tabs: TabDefinition<any>[]) {
+  const tabsToHide = tabs.filter((tab) => tab.hidden);
+  if (tabsToHide.length === 0) return;
+
+  const sheets = getSheetsClient();
+  const meta = await withRetry(() =>
+    sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: "sheets.properties.sheetId,sheets.properties.title,sheets.properties.hidden",
+    })
+  );
+  const byTitle = new Map((meta.data.sheets ?? []).map((s) => [s.properties?.title, s.properties]));
+
+  const requests = tabsToHide
+    .map((tab) => {
+      const props = byTitle.get(tab.name);
+      if (!props || props.sheetId == null || props.hidden) return null;
+      return {
+        updateSheetProperties: {
+          properties: { sheetId: props.sheetId, hidden: true },
+          fields: "hidden",
+        },
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+
+  if (requests.length === 0) return;
+
+  await withRetry(() =>
+    sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } })
+  );
 }
 
 /**
@@ -58,29 +100,31 @@ async function ensureTabsExist(spreadsheetId: string, tabs: TabDefinition<any>[]
     (meta.data.sheets ?? []).map((s) => s.properties?.title).filter(Boolean)
   );
   const missing = tabs.filter((tab) => !existingTitles.has(tab.name));
-  if (missing.length === 0) return;
+  if (missing.length > 0) {
+    await withRetry(() =>
+      sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: missing.map((tab) => ({ addSheet: { properties: { title: tab.name } } })),
+        },
+      })
+    );
 
-  await withRetry(() =>
-    sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        requests: missing.map((tab) => ({ addSheet: { properties: { title: tab.name } } })),
-      },
-    })
-  );
+    await withRetry(() =>
+      sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: "RAW",
+          data: missing.map((tab) => ({
+            range: `${tab.name}!A1`,
+            values: [tab.columns.map((c) => c.header)],
+          })),
+        },
+      })
+    );
+  }
 
-  await withRetry(() =>
-    sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        valueInputOption: "RAW",
-        data: missing.map((tab) => ({
-          range: `${tab.name}!A1`,
-          values: [tab.columns.map((c) => c.header)],
-        })),
-      },
-    })
-  );
+  await applyTabVisibility(spreadsheetId, tabs);
 }
 
 async function shareReadOnly(spreadsheetId: string, emails: string[]) {
@@ -168,6 +212,15 @@ export async function provisionWorkspace(
   );
 
   return { spreadsheetId, workspaceId: workspace.id };
+}
+
+/**
+ * Adds any workspace tabs missing from an already-provisioned workspace
+ * spreadsheet — needed whenever WORKSPACE_TABS grows (e.g. adding the
+ * Respondents tab for the Research module) after workspaces already exist.
+ */
+export async function ensureWorkspaceTabs(spreadsheetId: string): Promise<void> {
+  await ensureTabsExist(spreadsheetId, WORKSPACE_TABS);
 }
 
 /** Accepts either a bare spreadsheet ID or a full Google Sheets URL. */

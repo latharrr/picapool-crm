@@ -35,6 +35,7 @@ export const callHistorySchema = z.object({
 
 export const callHistoryTab = defineTab<CallHistoryRecord>({
   name: "Call_History",
+  hidden: true,
   schema: callHistorySchema,
   columns: [
     codec.string<CallHistoryRecord>("id")(),
@@ -73,6 +74,7 @@ export const messageHistorySchema = z.object({
 
 export const messageHistoryTab = defineTab<MessageHistoryRecord>({
   name: "Message_History",
+  hidden: true,
   schema: messageHistorySchema,
   columns: [
     codec.string<MessageHistoryRecord>("id")(),
@@ -110,6 +112,7 @@ export const emailHistorySchema = z.object({
 
 export const emailHistoryTab = defineTab<EmailHistoryRecord>({
   name: "Email_History",
+  hidden: true,
   schema: emailHistorySchema,
   columns: [
     codec.string<EmailHistoryRecord>("id")(),

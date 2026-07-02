@@ -18,6 +18,7 @@ import {
   Activity,
   History,
   Sparkles,
+  ClipboardList,
 } from "lucide-react";
 
 export type Permission = PermissionName;
@@ -28,7 +29,9 @@ export type FeatureKey =
   | "campaigns"
   | "messages"
   | "analytics"
-  | "tasks";
+  | "tasks"
+  | "research"
+  | "assistant";
 
 export interface NavItem {
   href: string;
@@ -89,9 +92,17 @@ export const NAV_ITEMS: NavItem[] = [
     mobilePrimary: true,
   },
   {
+    href: "/research",
+    label: "Research",
+    icon: ClipboardList,
+    feature: "research",
+    permission: "CALL",
+  },
+  {
     href: "/assistant",
     label: "AI Assistant",
     icon: Sparkles,
+    feature: "assistant",
     permission: "VIEW",
     mobilePrimary: true,
   },

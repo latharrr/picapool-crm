@@ -22,6 +22,7 @@ export const activityLogSchema = z.object({
 
 export const activityLogTab = defineTab<ActivityLogRecord>({
   name: "Activity_Log",
+  hidden: true,
   schema: activityLogSchema,
   columns: [
     codec.string<ActivityLogRecord>("id")(),
@@ -96,6 +97,7 @@ export const notificationSchema = z.object({
 
 export const notificationsTab = defineTab<NotificationRecord>({
   name: "Notifications",
+  hidden: true,
   schema: notificationSchema,
   columns: [
     codec.string<NotificationRecord>("id")(),
@@ -123,6 +125,7 @@ export const settingSchema = z.object({
 
 export const settingsTab = defineTab<SettingRecord>({
   name: "Settings",
+  hidden: true,
   schema: settingSchema,
   columns: [
     codec.string<SettingRecord>("id")(),

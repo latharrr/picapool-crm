@@ -69,3 +69,93 @@ export function csvRowToLeadInput(row: Record<string, string>): ParsedLeadRow {
     notes: get("notes"),
   };
 }
+
+/** Target fields a source column can be mapped to when importing an arbitrary sheet. */
+export const LEAD_TARGET_FIELDS = [
+  "name",
+  "phone",
+  "email",
+  "college",
+  "university",
+  "year",
+  "city",
+  "source",
+  "tags",
+  "notes",
+] as const;
+
+export type LeadTargetField = (typeof LEAD_TARGET_FIELDS)[number];
+
+export const LEAD_TARGET_FIELD_LABELS: Record<LeadTargetField, string> = {
+  name: "Name",
+  phone: "Phone",
+  email: "Email",
+  college: "College",
+  university: "University",
+  year: "Year",
+  city: "City",
+  source: "Source",
+  tags: "Tags",
+  notes: "Notes",
+};
+
+/** Common header spellings, normalized (lowercase, letters/digits only), per target field. */
+const FIELD_ALIASES: Record<LeadTargetField, string[]> = {
+  name: ["name", "fullname", "studentname", "leadname", "contactname"],
+  phone: [
+    "phone",
+    "phonenumber",
+    "mobile",
+    "mobilenumber",
+    "contact",
+    "contactnumber",
+    "whatsapp",
+    "whatsappnumber",
+    "number",
+  ],
+  email: ["email", "emailaddress", "mail", "emailid"],
+  college: ["college", "collegename"],
+  university: ["university", "universityname", "institute", "institution"],
+  year: ["year", "gradyear", "graduationyear", "class", "batch"],
+  city: ["city", "location", "town"],
+  source: ["source", "leadsource", "channel"],
+  tags: ["tags", "tag", "category", "categories"],
+  notes: ["notes", "note", "comments", "comment", "remark", "remarks", "description"],
+};
+
+function normalizeHeader(header: string): string {
+  return header.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Best-effort auto-match of a sheet's column headers to lead fields, for the import mapping step. */
+export function guessColumnMapping(headers: string[]): Record<string, LeadTargetField | null> {
+  const used = new Set<LeadTargetField>();
+  const mapping: Record<string, LeadTargetField | null> = {};
+
+  for (const header of headers) {
+    const normalized = normalizeHeader(header);
+    const match = LEAD_TARGET_FIELDS.find(
+      (field) => !used.has(field) && FIELD_ALIASES[field].includes(normalized)
+    );
+    mapping[header] = match ?? null;
+    if (match) used.add(match);
+  }
+
+  return mapping;
+}
+
+/** Applies a header -> target-field mapping chosen in the import UI to raw parsed rows. */
+export function applyColumnMapping(
+  rows: Record<string, string>[],
+  mapping: Record<string, LeadTargetField | null>
+): ParsedLeadRow[] {
+  return rows.map((row) => {
+    const mapped: Record<string, string> = {};
+    for (const [header, field] of Object.entries(mapping)) {
+      if (!field) continue;
+      const value = row[header];
+      if (value != null && value !== "") mapped[field] = value;
+    }
+    return csvRowToLeadInput(mapped);
+  });
+}

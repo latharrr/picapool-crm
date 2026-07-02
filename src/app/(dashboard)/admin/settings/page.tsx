@@ -18,6 +18,8 @@ const FEATURE_LABELS: Record<FeatureKey, { label: string; description: string }>
   messages: { label: "Messages", description: "WhatsApp and email logging." },
   analytics: { label: "Analytics", description: "The dashboard and reporting charts." },
   tasks: { label: "Tasks", description: "Follow-up and callback task tracking." },
+  research: { label: "Research", description: "The user-research interview console and respondent queue." },
+  assistant: { label: "AI Assistant", description: "The AI chat assistant." },
 };
 
 export default async function AdminSettingsPage() {

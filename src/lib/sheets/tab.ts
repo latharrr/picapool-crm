@@ -12,6 +12,14 @@ export interface TabDefinition<T> {
   name: string;
   columns: ColumnDef<T>[];
   schema: ZodType<T>;
+  /**
+   * Internal/system tab (audit trails, history logs, settings) that should
+   * stay hidden in the raw Google Sheet so opening the spreadsheet directly
+   * shows the tabs a human actually cares about (Leads, Contacts, Notes...).
+   * The app itself reads/writes hidden tabs normally — this only affects
+   * the Sheets UI.
+   */
+  hidden?: boolean;
 }
 
 export function defineTab<T>(def: TabDefinition<T>): TabDefinition<T> {

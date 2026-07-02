@@ -6,11 +6,14 @@ import { PermissionDenied } from "@/components/shared/permission-denied";
 import { CreateLeadDialog } from "@/components/leads/create-lead-dialog";
 import { ImportLeadsDialog } from "@/components/leads/import-leads-dialog";
 import { ExportLeadsButton } from "@/components/leads/export-leads-button";
+import { AssignLeadsDialog, type AssignableMember } from "@/components/leads/assign-leads-dialog";
 import { LeadsTable } from "@/components/leads/leads-table";
 import { requireSession } from "@/lib/auth/session";
 import { getActiveWorkspaceContext } from "@/lib/workspace-context";
 import { hasPermission } from "@/lib/auth/rbac";
-import { leadsRepository } from "@/lib/sheets/repositories";
+import { getRootSpreadsheetId } from "@/lib/env";
+import { leadsRepository, usersRepository, userWorkspacesRepository } from "@/lib/sheets/repositories";
+import { QUEUE_STATUSES } from "@/lib/calling";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +43,29 @@ export default async function LeadsPage() {
   const canEdit = hasPermission(ctx.role, "EDIT");
   const canImport = hasPermission(ctx.role, "IMPORT");
   const canExport = hasPermission(ctx.role, "EXPORT");
+  const canAssign = hasPermission(ctx.role, "VIEW_ANALYTICS");
+
+  let assignableMembers: AssignableMember[] = [];
+  if (canAssign) {
+    const rootId = getRootSpreadsheetId();
+    if (rootId) {
+      const [memberships, users] = await Promise.all([
+        userWorkspacesRepository.list(rootId),
+        usersRepository.list(rootId),
+      ]);
+      const userMap = new Map(users.map((u) => [u.id, u]));
+      assignableMembers = memberships
+        .filter((m) => m.workspace_id === ctx.workspaceId && hasPermission(m.role, "CALL"))
+        .map((m) => ({
+          userId: m.user_id,
+          name: userMap.get(m.user_id)?.name ?? "Unknown user",
+          role: m.role,
+        }));
+    }
+  }
+  const unassignedCount = leads.filter(
+    (lead) => !lead.owner_id && QUEUE_STATUSES.includes(lead.status)
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -49,6 +75,13 @@ export default async function LeadsPage() {
         actions={
           <>
             {canImport && <ImportLeadsDialog workspaceId={ctx.workspaceId} />}
+            {canAssign && (
+              <AssignLeadsDialog
+                workspaceId={ctx.workspaceId}
+                members={assignableMembers}
+                unassignedCount={unassignedCount}
+              />
+            )}
             {canExport && <ExportLeadsButton leads={leads} />}
             {canEdit && <CreateLeadDialog workspaceId={ctx.workspaceId} />}
           </>

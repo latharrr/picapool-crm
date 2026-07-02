@@ -127,6 +127,7 @@ export const tagSchema = z.object({
 
 export const tagsTab = defineTab<TagRecord>({
   name: "Tags",
+  hidden: true,
   schema: tagSchema,
   columns: [
     codec.string<TagRecord>("id")(),

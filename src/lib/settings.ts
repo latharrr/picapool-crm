@@ -9,18 +9,27 @@ const ALL_FEATURE_KEYS: FeatureKey[] = [
   "messages",
   "analytics",
   "tasks",
+  "research",
+  "assistant",
 ];
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
+/**
+ * Core loop (dashboard, leads, calling, tasks) is on by default; everything
+ * else starts off so a fresh workspace opens simple and a founder opts in to
+ * the extra modules from Settings rather than opting out of clutter.
+ */
 function defaultFlags(): FeatureFlags {
   return {
     calling: true,
-    housing: true,
-    campaigns: true,
-    messages: true,
     analytics: true,
     tasks: true,
+    housing: false,
+    campaigns: false,
+    messages: false,
+    research: false,
+    assistant: false,
   };
 }
 

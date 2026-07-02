@@ -14,6 +14,7 @@ import {
   notificationsTab,
   settingsTab,
 } from "./schema/ops";
+import { respondentsTab } from "./schema/research";
 
 /** Tabs that live in the single central Root spreadsheet (identity + membership). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,4 +41,5 @@ export const WORKSPACE_TABS: TabDefinition<any>[] = [
   housingListingsTab,
   notificationsTab,
   settingsTab,
+  respondentsTab,
 ];
